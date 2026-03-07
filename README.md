@@ -10,6 +10,7 @@
 1. 點連結使用ini產生器
 1. 產生ini
 1. 放到ACC需要的資料夾使用
+---
 ## [賽道數據產生工具](/introduction/DXF_to_lapdata.md)
 1. 用繪圖軟體用直線、圓弧畫出賽道輪廓(如果要輔助的線條記得轉建構線條)
 1. 下載成DXF
@@ -20,6 +21,10 @@
 1. 準備好**賽道數據產生工具**的excel
 1. 點連結啟動賽道xy座標工具
 1. 輸出xy座標excel
+## [賽道分析工具](/introduction/track_characterization.md)
+1. 準備好**賽道數據產生工具**的excel
+1. 啟動工具執行繪製分析圖
+1. 開始解讀圖表
 ## 現成資料
 * output ACC : 之前產生FST的檔案包
 * output lapsim : 之前製作的賽道
