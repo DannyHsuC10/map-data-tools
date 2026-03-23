@@ -25,6 +25,8 @@
 1. 準備好**賽道數據產生工具**的excel
 1. 啟動工具執行繪製分析圖
 1. 開始解讀圖表
+## [GPS 校正](/introduction/GPS.md)
+透過地圖與實際尺寸符合，我們會透過收集實際GPS資料進行地圖校正
 ## 現成資料
 * output ACC : 之前產生FST的檔案包
 * output lapsim : 之前製作的賽道
