@@ -142,6 +142,14 @@ def reverse_segment(seg):#反轉排序
     seg.start, seg.end = seg.end, seg.start
     if seg.type == 'ARC':
         seg.start_angle, seg.end_angle = seg.end_angle, seg.start_angle
+
+
+def arc_sweep(seg):
+    """Return the signed angle traveled along an ARC, in radians."""
+    ccw = (seg.end_angle - seg.start_angle) % math.tau
+    if ccw == 0 or (seg.mid_angle - seg.start_angle) % math.tau < ccw:
+        return ccw
+    return ccw - math.tau
     
 def sort_segments(segments, tol=1e-8):#線段排序
     if not segments:
@@ -327,113 +335,73 @@ def reset_direction(segments):#重設方向
         if seg.type == 'ARC':
             seg.start_angle, seg.end_angle = seg.end_angle, seg.start_angle
 
-#==========================================(excel檔案輸出)
-def excel_data(segments, filename ,workbook):
-    if workbook is None:
-        wb = openpyxl.Workbook()
-    else:
-        wb = workbook
-    ws = wb.active
-    ws.title = "Trackdata"
+#==========================================(賽道幾何資料)
+TRACKDATA_FIELDS = (
+    "section", "Type", "Start_X", "Start_Y", "End_X", "End_Y",
+    "Center_X", "Center_Y", "Radius", "Start_Angle (deg)", "End_Angle (deg)",
+    "length", "Direction",
+)
+GEOMETRY_SUMMARY_FIELDS = (
+    "section", "Type", "Start_X", "Start_Y", "Center_X", "Center_Y",
+    "Radius", "Length", "Direction",
+)
 
-    headers = [
-        "section", "Type", "Start_X", "Start_Y", "End_X", "End_Y",
-        "Center_X", "Center_Y", "Radius", "Start_Angle (deg)", "End_Angle (deg)",
-        "length","Direction"
-    ]
-    ws.append(headers)
 
-    for i, seg in enumerate(segments):
+def geometry_rows(segments):
+    rows = []
+    for index, seg in enumerate(segments, start=1):
         if seg.type == 'LINE':
-            length = ((seg.start[0]-seg.end[0])**2+(seg.start[1]-seg.end[1])**2)**0.5#兩點算出直線距離
-            row = [
-                i + 1,
-                "LINE",
-                seg.start[0], seg.start[1],
-                seg.end[0], seg.end[1],
-                "", "", "", "", "",length,
-                ""
-            ]
-        elif seg.type == 'ARC':
-            # 計算方向：用中角判斷是否為順時針
-            sa = seg.start_angle
-            ea = seg.end_angle
-            ma = seg.mid_angle
-            clockwise = ea<ma and ma<sa or ma>ea and ma>sa and sa<ea
-            direction = "Clockwise" if clockwise else "Counterclockwise"
-            if clockwise:
-                theta = abs((sa-ea)%(2 * math.pi))
-                arc_length = seg.radius * (theta)#R*theta 計算弧長
-            else:
-                theta = abs((ea-sa)%(2 * math.pi))
-                arc_length = seg.radius * (theta)#R*theta 計算弧長
+            curve = ("", "", "", "", "", math.dist(seg.start, seg.end), "")
+        else:
+            sweep = arc_sweep(seg)
+            curve = (
+                *seg.center, seg.radius, math.degrees(seg.start_angle), math.degrees(seg.end_angle),
+                seg.radius * abs(sweep), "Clockwise" if sweep < 0 else "Counterclockwise",
+            )
+        values = (index, seg.type, *seg.start, *seg.end, *curve)
+        rows.append(dict(zip(TRACKDATA_FIELDS, values)))
+    return rows
 
-            row = [
-                i + 1,
-                "ARC",
-                seg.start[0], seg.start[1],
-                seg.end[0], seg.end[1],
-                seg.center[0], seg.center[1],
-                seg.radius,
-                math.degrees(sa),
-                math.degrees(ea),
-                arc_length,
-                direction
-            ]
-        ws.append(row)
 
+def geometry_summary_rows(rows):
+    for row in rows:
+        yield tuple(row["length" if field == "Length" else field] for field in GEOMETRY_SUMMARY_FIELDS)
+
+
+def export_geometry_excel(rows, filename, *, include_summary=False):
+    wb = Workbook()
+    details = wb.active
+    details.title = "Trackdata"
+    details.append(TRACKDATA_FIELDS)
+    for row in rows:
+        details.append([row[field] for field in TRACKDATA_FIELDS])
+    if include_summary:
+        summary = wb.create_sheet("GeometrySummary")
+        summary.append(GEOMETRY_SUMMARY_FIELDS)
+        for row in geometry_summary_rows(rows):
+            summary.append(row)
     wb.save(filename)
-    print(f"main info exported to: {filename}")
 
-def excel_export_summary(segments,filename, workbook,):
-    ws = workbook.create_sheet(title="GeometrySummary")#同個檔案中的新表單
-
-    headers = [
-        "section", "Type", "Start_X", "Start_Y",
-        "Center_X", "Center_Y", "Radius",
-        "Length", "Direction"
-    ]
-    ws.append(headers)
-
-    for i, seg in enumerate(segments):
-        if seg.type == 'LINE':
-            length = ((seg.start[0]-seg.end[0])**2+(seg.start[1]-seg.end[1])**2)**0.5
-            row = [
-                i + 1, "LINE",
-                seg.start[0], seg.start[1],
-                "", "", "", length, ""
-            ]
-        elif seg.type == 'ARC':
-            # 計算弧長與方向
-            sa = seg.start_angle
-            ea = seg.end_angle
-            ma = seg.mid_angle
-            clockwise = ea<ma and ma<sa or ma>ea and ma>sa and sa<ea
-            direction = "Clockwise" if clockwise else "Counterclockwise"
-            if clockwise:
-                theta = abs((sa-ea)%(2 * math.pi))
-                arc_length = seg.radius * (theta)#R*theta 計算弧長
-            else:
-                theta = abs((ea-sa)%(2 * math.pi))
-                arc_length = seg.radius * (theta)#R*theta 計算弧長
-
-            row = [
-                i + 1, "ARC",
-                seg.start[0], seg.start[1],
-                seg.center[0], seg.center[1],
-                seg.radius,
-                arc_length,
-                direction
-            ]
-        ws.append(row)
-    print(f"GeometrySummary info exported to: {filename}")
 
 def export_all_to_excel(segments, filename):
-    wb = Workbook()
-    excel_data(segments, filename, wb)  # 傳入已存在的 wb
-    excel_export_summary(segments,filename, wb)
-    wb.save(filename)
+    rows = geometry_rows(segments)
+    export_geometry_excel(rows, filename, include_summary=True)
     print(f"All data exported to {filename}")
+    return rows
+
+
+def trackdata_rows(sheet):
+    rows = sheet.values
+    headers = next(rows)
+    return [dict(zip(headers, row)) for row in rows]
+
+
+def read_trackdata(filename):
+    wb = openpyxl.load_workbook(filename, read_only=True, data_only=True)
+    try:
+        return trackdata_rows(wb.active)
+    finally:
+        wb.close()
 
 #=====================================(執行)
 def run_all_read_DXF(DXF_filename,excel_filename):#完整執行
@@ -471,6 +439,5 @@ def run_all_read_DXF(DXF_filename,excel_filename):#完整執行
     return (setedstart_sorted_segments)
 
 
-DXF_filename = "fsae_A_2025.dxf"
-excel_filename = "fsae_A_2025_track.xlsx"
-run_all_read_DXF(DXF_filename,excel_filename)
+if __name__ == "__main__":
+    run_all_read_DXF("fsae_A_2025.dxf", "fsae_A_2025_track.xlsx")

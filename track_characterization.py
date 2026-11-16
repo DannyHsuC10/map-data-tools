@@ -1,185 +1,74 @@
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
-# 讀取
-file = "fsae_A_2025_track.xlsx"
-df = pd.read_excel(file)
-
-#print(df.head())
-
-ds = 0.5
-g = 9.81
-a = 1.6*g
+from DXF_to_lapdata import read_trackdata
 
 
-# 計算曲率
-s_list = []
-kappa_list = []
+def plot_analysis(rows, figure=None, lateral_g=1.6):
+    if figure is None:
+        figure = Figure(figsize=(12, 8), layout="constrained")
 
-s_current = 0
+    lengths = np.array([row["length"] for row in rows], dtype=float)
+    radii = np.array([row["Radius"] or 0 for row in rows], dtype=float)
+    corners = np.array([row["Type"] == "ARC" for row in rows])
+    curvature = np.zeros(len(rows))
+    curvature[corners] = 1 / radii[corners]
+    curvature[[row["Direction"] == "Clockwise" for row in rows]] *= -1
+    distances = np.r_[0, np.cumsum(lengths)]
+    arc_radii = radii[corners]
+    arc_lengths = lengths[corners]
+    arc_times = arc_lengths / np.sqrt(lateral_g * 9.81 * arc_radii)
 
-Column_n= 50
+    axes = figure.subplots(3, 2)
+    curvature_ax, count_ax, length_ax, time_ax, frequency_ax, wavelength_ax = axes.flat
+    curvature_ax.stairs(curvature, distances, color="#075985")
+    curvature_ax.set(title="Track curvature", xlabel="Distance (m)", ylabel="Curvature (1/m)")
 
-for _, row in df.iterrows():
-
-    L = row["length"]
-
-    # 曲率
-    if row["Type"] == "LINE" or pd.isna(row["Radius"]):
-        kappa = 0
-
-    else:
-        R = row["Radius"]
-
-        if row["Direction"] == "Clockwise":
-            kappa = -1 / R
+    bins = np.histogram_bin_edges(arc_radii, bins=50)
+    for ax, weights, title, ylabel in (
+        (count_ax, None, "Corner radius distribution", "Count"),
+        (length_ax, arc_lengths, "Length-weighted radii", "Arc length (m)"),
+        (time_ax, arc_times, "Time-weighted radii", "Estimated time (s)"),
+    ):
+        ax.set(title=title, xlabel="Corner radius (m)", ylabel=ylabel)
+        if arc_radii.size:
+            counts, _, bars = ax.hist(arc_radii, bins=bins, weights=weights, color="#0e7490")
+            if weights is not None:
+                for index in np.argsort(counts)[-5:]:
+                    if counts[index] > 0:
+                        bars[index].set_facecolor("#c2410c")
         else:
-            kappa = 1 / R
+            ax.text(0.5, 0.5, "No arcs", ha="center", va="center", transform=ax.transAxes)
 
-    n = int(L / ds)
-
-    for i in range(n):
-        s_list.append(s_current)
-        kappa_list.append(kappa)
-        s_current += ds
-
-s = np.array(s_list)
-kappa = np.array(kappa_list)
-
-
-# 繪製曲率圖
-plt.figure()
-plt.plot(s, kappa)
-plt.xlabel("Distance (m)")
-plt.ylabel("Curvature (1/m)")
-plt.title("Track Curvature")
-plt.show()
-# ==================================================================(曲率分布)
-# 繪製曲率分佈圖
-R = df["Radius"].dropna()
-
-plt.figure()
-plt.hist(R, bins=Column_n)
-plt.xlabel("Radius (m)")
-plt.ylabel("Count")
-plt.title("Corner Radius Distribution")
+    # Uniform samples along the whole lap preserve the distance of short segments.
+    count = max(2, int(min(200_000, distances[-1] / 0.5)))
+    ds = distances[-1] / count
+    indices = np.searchsorted(distances[1:], np.arange(count) * ds, side="right")
+    spectrum = np.abs(np.fft.rfft(curvature[indices]))[1:]
+    frequencies = np.fft.rfftfreq(count, d=ds)[1:]
+    frequency_ax.plot(frequencies, spectrum, color="#0e7490", marker="." if len(spectrum) == 1 else None)
+    frequency_ax.set(title="Curvature spectrum (FFT)", xlabel="Spatial frequency (1/m)", ylabel="Amplitude")
+    wavelength_ax.plot(1 / frequencies, spectrum, color="#0e7490", marker="." if len(spectrum) == 1 else None)
+    wavelength_ax.set(title="Curvature by wavelength", xlabel="Spatial wavelength (m)", ylabel="Amplitude", xscale="log")
+    for ax in axes.flat:
+        ax.grid(axis="y", alpha=0.2)
+        ax.set_axisbelow(True)
+    return figure
 
 
+def main():
+    import matplotlib.pyplot as plt
 
-# 繪製曲率分佈圖（長度加權）
-R_weighted = []
-L_tt = 0
-for _, row in df.iterrows():
+    rows = read_trackdata("fsae_A_2025_track.xlsx")
+    figure = plot_analysis(rows, plt.figure(figsize=(12, 8), layout="constrained"))
+    for ax, label, unit in ((figure.axes[2], "長度", "m"), (figure.axes[3], "估算時間", "s")):
+        bars = [bar for bar in ax.patches if bar.get_height() > 0]
+        print(f"{label}權重排名（彎道合計 {sum(bar.get_height() for bar in bars):.2f} {unit}）")
+        for bar in sorted(bars, key=lambda item: item.get_height(), reverse=True)[:5]:
+            radius = bar.get_x() + bar.get_width() / 2
+            print(f"{radius:.2f} m | weight = {bar.get_height():.2f} {unit}")
+    plt.show()
 
-    if row["Type"] == "ARC":
-        l = row["length"]
-        L_tt+=l
-        n = round(L)
-        R_weighted += [row["Radius"]] * n
-        
-# === 長度加權的 histogram ===
-counts, bin_edges = np.histogram(R_weighted, bins=Column_n)
 
-# 排序（由大到小）前n名
-n = 5
-top_idx = np.argsort(counts)[-n:][::-1]
-
-top_bins = []
-print("長度權重排名========")
-print("彎道總長度",L_tt)
-for i in top_idx:
-    r_min = bin_edges[i]
-    r_max = bin_edges[i+1]
-    weight = counts[i]
-    r_mid = (r_max+r_min)/2
-    #print(f"{r_min:.2f} ~ {r_max:.2f} m | weight = {weight}m")
-    print(f"{r_mid:.2f} m | weight = {weight}m")
-    top_bins.append((r_min, r_max))
-
-plt.figure()
-
-counts, bin_edges, patches = plt.hist(R_weighted, bins=Column_n)
-
-# 標出前三名
-for i in top_idx:
-    patches[i].set_facecolor('red')
-
-plt.xlabel("Radius (m)")
-plt.ylabel("Arc Length Weight")
-plt.title("Radius Distribution (Length Weighted)")
-plt.show()
-
-# 速度加權=============================================================
-R_weighted = []
-t_tt = 0
-for _, row in df.iterrows():
-
-    if row["Type"] == "ARC":
-        r = row["Radius"]
-        l = row["length"]
-        v = (a*r)**0.5
-        t = l/v
-        t_tt+=t
-        #print(t)
-        R_weighted += [r] * round(t)
-
-counts, bin_edges = np.histogram(R_weighted, bins=Column_n)
-
-top_idx = np.argsort(counts)[-n:][::-1]
-
-top_bins = []
-print("時間權重排名========")
-print("彎道時間",t_tt)
-for i in top_idx:
-    r_min = bin_edges[i]
-    r_max = bin_edges[i+1]
-    weight = counts[i]
-    r_mid = (r_max+r_min)/2
-    #print(f"{r_min:.2f} ~ {r_max:.2f} m | weight = {weight}s")
-    print(f"{r_mid:.2f} m | weight = {weight}s")
-    top_bins.append((r_min, r_max))
-
-plt.figure()
-counts, bin_edges, patches = plt.hist(R_weighted, bins=Column_n)
-
-# 標出前三名
-for i in top_idx:
-    patches[i].set_facecolor('red')
-
-plt.xlabel("Radius (m)")
-plt.ylabel("Arc Length Weight (s)")
-plt.title("Radius Distribution (time Weighted)")
-plt.show()
-# ==========================================================(頻譜特徵分析)
-# 進行 FFT 分析
-N = len(kappa)
-
-fft_val = np.fft.fft(kappa)
-freq = np.fft.fftfreq(N, d=ds)
-
-amp = np.abs(fft_val)
-
-mask = freq > 0
-
-freq = freq[mask]
-amp = amp[mask]
-
-# 繪製頻譜圖
-plt.figure()
-plt.plot(freq, amp)
-plt.xlabel("Spatial Frequency (1/m)")
-plt.ylabel("Amplitude")
-plt.title("Curvature Spectrum (FFT)")
-plt.show()
-
-# 繪製波長圖
-wavelength = 1 / freq
-
-plt.figure()
-plt.plot(wavelength, amp)
-plt.xscale("log")
-plt.xlabel("Spatial Wavelength (m)")
-plt.ylabel("Amplitude")
-plt.title("Track Curvature Spectrum")
-plt.show()
+if __name__ == "__main__":
+    main()
