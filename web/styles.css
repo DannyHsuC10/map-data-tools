@@ -51,7 +51,16 @@ button.primary:hover:not(:disabled), .file-picker:hover:not(:has(input:disabled)
   border-bottom: 4px solid #58b2b9;
 }
 .top-inner, main { max-width: 1460px; margin-inline: auto; padding-inline: var(--page-gutter); }
-.top-inner { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding-block: 10px; }
+.top-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding-block: 10px;
+  padding-inline-start: max(.5rem, calc(var(--page-gutter) - .75rem));
+}
+.site-heading { display: flex; align-items: center; gap: .625rem; min-width: 0; }
+.site-icon { display: block; flex: none; }
 .top :focus-visible, .file-picker:focus-within { outline-color: #9cdee3; }
 h1 { font-size: clamp(1.55rem, 3vw, 1.75rem); font-weight: 750; line-height: 1.2; }
 .tagline { margin-top: .25rem; color: #d4e3ee; font-size: .875rem; }
@@ -137,6 +146,8 @@ dialog::backdrop { background: rgb(17 29 49 / .55); }
   .map-area { min-height: 220px; height: 42vh; }
 }
 @media (max-width: 480px) {
+  .top-inner, .site-heading { gap: .5rem; }
+  .site-icon { width: 32px; height: 32px; }
   h1 { font-size: 1.25rem; }
   .tagline { font-size: .8rem; }
 }
