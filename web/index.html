@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#142b3a">
+  <meta name="description" content="Preview DXF track paths and circle centers, analyze tracks, and export data for simulation.">
+  <title>Track Data Tools</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="eyebrow">MAP DATA TOOLS</p>
+      <h1>Track Data Tools</h1>
+    </div>
+    <div class="input-file">
+      <span id="file-name">No file selected</span>
+      <label class="button primary file-picker">Choose DXF<input id="dxf" type="file" accept=".dxf" aria-label="Choose DXF"></label>
+    </div>
+  </header>
+
+  <main>
+    <div class="switcher" role="group" aria-label="Tools">
+      <button id="route-tab" class="tab" type="button" aria-pressed="true">Track Analysis</button>
+      <button id="circle-tab" class="tab" type="button" aria-pressed="false">Circle Center Export</button>
+    </div>
+
+    <div class="workspace">
+      <aside class="panel" aria-label="Settings">
+        <section id="empty-settings">
+          <h2>Get Started</h2>
+          <p>Choose a DXF file or load a sample to preview the track path or cone positions.</p>
+          <button id="route-sample" type="button">Load Track Sample</button>
+          <button id="circle-sample" type="button">Load Cone Sample</button>
+        </section>
+
+        <section id="route-settings" hidden>
+          <ol class="steps" id="steps" aria-label="Progress">
+            <li>Order</li><li>Start</li><li>Direction</li><li>Export</li>
+          </ol>
+          <h2 id="step-title">Track Order</h2>
+          <section data-step="0">
+            <label>Track layer <select id="route-layer"></select></label>
+            <form id="tolerance-form">
+              <label>Endpoint tolerance (DXF units)<input id="tolerance" type="number" step="any" min="0" value="0.00000001" required></label>
+              <button id="apply-tolerance" type="submit">Apply Tolerance</button>
+            </form>
+          </section>
+          <section data-step="1" hidden>
+            <p>Select a junction on the map or enter its number.</p>
+            <label>Starting junction number<input id="start" type="number" min="1" step="1" required></label>
+          </section>
+          <section data-step="2" hidden>
+            <fieldset>
+              <legend>Driving direction</legend>
+              <label><input name="direction" type="radio" value="forward" checked> Keep original direction</label>
+              <label><input name="direction" type="radio" value="reverse"> Reverse direction</label>
+            </fieldset>
+          </section>
+          <section data-step="3" hidden>
+            <label>Meters per DXF unit<input id="scale" type="number" min="0" step="any" required></label>
+            <small class="scale-source"></small>
+            <label>Lateral acceleration (g)<input id="lateral" type="number" min="0" step="any" value="1.6" required></label>
+            <div id="route-exports" hidden>
+              <label>XY sampling method
+                <select id="xy-mode">
+                  <option value="distance">One point every N meters</option>
+                  <option value="segment">N points per segment</option>
+                </select>
+              </label>
+              <label><span id="xy-label">Sample spacing (m)</span><input id="xy-value" type="number" min="0" step="any" value="1" required></label>
+              <button class="ini-settings" type="button">INI Settings</button>
+              <div class="export-buttons">
+                <button type="button" data-export="excel" class="primary">Export Excel</button>
+                <button type="button" data-export="csv" class="primary">Export CSV</button>
+                <button type="button" data-export="ini" class="primary">Export INI</button>
+                <button type="button" data-export="analysis">Save Analysis Plot</button>
+              </div>
+            </div>
+          </section>
+          <div class="step-buttons">
+            <button id="next" type="button" class="primary">Next</button>
+            <button id="back" type="button" hidden>Back</button>
+          </div>
+        </section>
+
+        <section id="circle-settings" hidden>
+          <h2>Circle Centers</h2>
+          <label>Circle layer <select id="circle-layer"></select></label>
+          <label>Meters per DXF unit<input id="circle-scale" type="number" min="0" step="any" required></label>
+          <small class="scale-source"></small>
+          <button class="ini-settings" type="button">INI Settings</button>
+          <div class="export-buttons">
+            <button type="button" data-export="csv" class="primary">Export CSV</button>
+            <button type="button" data-export="ini" class="primary">Export INI</button>
+          </div>
+        </section>
+
+        <p id="status" class="status" role="status"></p>
+      </aside>
+
+      <section class="preview" aria-label="Drawing preview">
+        <div class="preview-header">
+          <div>
+            <h2 id="preview-title">Track Preview</h2>
+            <p id="preview-meta">Preview track paths and layers from a DXF file.</p>
+          </div>
+          <div class="view-buttons" aria-label="Preview controls">
+            <button type="button" id="show-map" hidden>Track</button>
+            <button type="button" id="show-analysis" hidden>Analysis</button>
+            <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+            <button type="button" id="zoom-in" aria-label="Zoom in">＋</button>
+            <button type="button" id="zoom-reset">Reset</button>
+          </div>
+        </div>
+        <div class="map-area" id="map-area">
+          <svg id="map" aria-label="Track path and circle center preview"></svg>
+          <div class="placeholder" id="empty-plot">Load a DXF file to see a preview.</div>
+        </div>
+        <img id="analysis-plot" hidden alt="Track curvature, corner radius distributions, and curvature by spatial frequency and wavelength">
+        <div class="legend" id="legend" hidden>
+          <span><i></i>Straight</span><span><i class="arc"></i>Arc</span><span><i class="start"></i>Start</span>
+        </div>
+      </section>
+    </div>
+    <p class="footnote">DXF files are processed in your browser. The processing engine downloads when you open your first file.</p>
+  </main>
+
+  <dialog id="ini-dialog">
+    <form id="ini-form" method="dialog">
+      <h2>INI Settings</h2>
+      <div class="dialog-fields">
+        <label>Height (m)<input name="height" type="number" step="any" required></label>
+        <label>First object number<input name="firstModel" type="number" min="0" step="1" required></label>
+        <label>Model filename<input name="modelFile" required></label>
+        <label>Object name<input name="name" required></label>
+        <label>Rotation (comma-separated)<input name="rotation" required></label>
+        <label class="check"><input name="physical" type="checkbox"> Enable physics</label>
+      </div>
+      <p id="ini-error" class="status" role="status"></p>
+      <div class="dialog-actions">
+        <button id="ini-cancel" type="button">Cancel</button>
+        <button type="submit" class="primary">Apply</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

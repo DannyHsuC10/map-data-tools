@@ -1,5 +1,18 @@
 # Map data tools
 
+## GitHub Pages 網頁版
+
+在網頁版可匯入 DXF、選擇圖層與起點、預覽賽道和圓心，並匯出 CSV、Excel、INI 或分析圖。賽道 CSV 和 Excel 各以 ZIP 下載，內含幾何和 XY 兩個檔案。DXF 在瀏覽器內處理，首次使用需要網路下載 Python 運算元件。
+
+在儲存庫的 **Settings → Pages → Build and deployment → Source** 選擇 **GitHub Actions**。推送到 `main` 後會自動部署，也可以從 **Actions → Deploy map data tools to GitHub Pages → Run workflow** 手動執行。
+
+在本地預覽時，先執行：
+
+    python scripts/build_pages.py
+    python -m http.server 8000 --directory _site
+
+接著開啟 [本地預覽](http://localhost:8000/)。
+
 ## 賽道資料桌面工具
 
 使用含 Tkinter 的 Python 3.10 以上版本，在專案目錄執行：
@@ -25,7 +38,7 @@ python track_app.py
 | 匯出 INI | `*_cones.ini` | 按 XY 取樣點的順序放置模擬器物件，每筆座標對應一個 `[MODEL_n]` |
 | 儲存分析圖 | `*_track_analysis.png` | 曲率、彎道半徑分布、長度與估算時間加權、曲率頻譜及波長圖，也可在介面內查看 |
 
-INI 使用與 Excel、CSV 相同的 XY 取樣點，依原本的模擬器座標軸格式寫入 `POSITION=-X, 高度, Y`。高度是平面上的 Z，在模擬器的 `POSITION` 裡對應第二軸。按「INI 設定」可調整高度、起始物件編號、模型檔名、物件名稱、旋轉與物理屬性。預設值取自 `cone_to_ini.py`，使用 `cone.kn5`、`AC_POBJECT_999_3`、高度 `-0.419`、第一個物件 `MODEL_1`、旋轉 `0, 0, 0` 和 `PHYSICAL=1`。INI 引用的模型檔須由模擬器端提供。
+賽道 INI 預設使用與 Excel、CSV 相同的 XY 取樣點，依原本的模擬器座標軸格式寫入 `POSITION=-X, 高度, Y`。高度是平面上的 Z，在模擬器的 `POSITION` 裡對應第二軸。按「INI 設定」可調整高度、起始物件編號、模型檔名、物件名稱、旋轉與物理屬性。預設值取自 `cone_to_ini.py`，使用 `cone.kn5`、`AC_POBJECT_999_3`、高度 `-0.419`、第一個物件 `MODEL_1`、旋轉 `0, 0, 0` 和 `PHYSICAL=1`。INI 引用的模型檔須由模擬器端提供。
 
 XY 檔案按行駛順序排列 `Point`、`X`、`Y`。完成分析後可選擇「XY 取樣方式」，Excel、CSV 和 INI 採用相同規則。
 
@@ -33,6 +46,8 @@ XY 檔案按行駛順序排列 `Point`、`X`、`Y`。完成分析後可選擇「
 - **每 N 公尺取一點**。從起點開始，沿整圈累積的線長與弧長按固定間距取樣，預設 1 公尺。路段接點在落於取樣位置時寫出，整圈終點會補上，最後一段間距可能較短。
 
 時間加權以指定的橫向加速度估算各彎道通過時間，預設使用 1.6 g。
+
+要使用圖面上標記的角錐位置，選取 DXF 後切到「圓心匯出」。可選擇全部圓形圖層或單一圖層，在圖上預覽圓心，再匯出 `*_circle_centers.csv`（`Point、X、Y`）或 `*_circle_cones.ini`。程式以模型空間的 `CIRCLE` 圓心為準，每個圓形對應一筆座標，並按「每 DXF 單位的公尺數」換算。INI 高度使用「INI 設定」的值。只有圓形的 DXF 也能直接匯出。
 
 ## 車手訓練模擬器圖資建立
 ### [角錐定位工具](introduction/DXF_to_cone.md)
