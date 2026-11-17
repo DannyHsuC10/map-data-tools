@@ -13,7 +13,10 @@ from matplotlib.figure import Figure
 from DXF_to_lapdata import arc_sweep
 from cone_to_ini import MODEL_FILE, MODEL_PHYSICAL, MODEL_ROTATION, n_set, name_set, y_set
 from lapdata_to_xy import DEFAULT_XY_POINTS, DEFAULT_XY_SPACING, sample_arc
-from track_pipeline import analyze_track, export_track, order_from_start, prepare_route, read_dxf
+from track_pipeline import (
+    analyze_track, circle_centers, export_circle_centers, export_track, order_from_start,
+    prepare_route, read_dxf,
+)
 
 
 ALL_LAYERS = "（所有圖層）"
@@ -48,6 +51,8 @@ class TrackApp:
         self.root = root
         self.path = None
         self.entities = []
+        self.circles = []
+        self.centers = []
         self.route = []
         self.step = 0
         self.applied_tolerance = None
@@ -66,6 +71,7 @@ class TrackApp:
 
         self.filename = tk.StringVar(value="尚未選取檔案")
         self.layer = tk.StringVar(value=ALL_LAYERS)
+        self.circle_layer = tk.StringVar(value=ALL_LAYERS)
         self.scale = tk.StringVar(value="1")
         self.scale_source = tk.StringVar()
         self.tolerance = tk.StringVar(value="1e-8")
@@ -80,9 +86,11 @@ class TrackApp:
         self.preview_title = tk.StringVar()
         self.preview_help = tk.StringVar()
         self.status = tk.StringVar(value="請選取包含賽道路徑的 DXF。")
+        self.circle_status = tk.StringVar(value="請選取以圓形標記位置的 DXF。")
 
         self.build()
         self.show_step(0)
+        self.refresh_circle_centers()
 
     def build(self):
         style = ttk.Style(self.root)
@@ -103,29 +111,34 @@ class TrackApp:
 
         header = tk.Frame(self.root, background="#172b3b", padx=22, pady=12)
         header.pack(fill="x")
-        tk.Label(header, text="賽道資料工具", background="#172b3b", foreground="white",
+        brand = tk.Frame(header, background="#172b3b")
+        brand.pack(side="left")
+        tk.Label(brand, text="賽道資料工具", background="#172b3b", foreground="white",
                  font=("Microsoft JhengHei UI", 19, "bold")).pack(anchor="w")
-        tk.Label(header, text="DXF 匯入、路徑預覽與賽道分析", background="#172b3b",
+        tk.Label(brand, text="DXF 匯入、路徑預覽與賽道分析", background="#172b3b",
                  foreground="#cbe0e9").pack(anchor="w")
+        self.file_button = ttk.Button(header, text="選取 DXF…", command=self.choose_file)
+        self.file_button.pack(side="right")
+        tk.Label(header, textvariable=self.filename, background="#172b3b", foreground="#cbe0e9",
+                 width=30, anchor="e").pack(side="right", padx=(0, 10))
 
         body = ttk.Frame(self.root, padding=(16, 14))
         body.pack(fill="both", expand=True)
-        panel = ttk.Frame(body, style="Card.TFrame", padding=14)
-        panel.pack(side="left", fill="y", padx=(0, 14))
+        sidebar = ttk.Frame(body, style="Card.TFrame", padding=14)
+        sidebar.pack(side="left", fill="y", padx=(0, 14))
+        sidebar.columnconfigure(0, minsize=238, weight=1)
+        panel = self.route_panel = ttk.Frame(sidebar, style="Card.TFrame")
+        panel.grid(row=0, sticky="ew")
         panel.columnconfigure(0, minsize=238, weight=1)
         ttk.Label(panel, textvariable=self.step_title, style="Step.TLabel").grid(
             row=0, sticky="w", pady=(0, 6))
         ttk.Label(panel, textvariable=self.step_help, style="Hint.TLabel", wraplength=238).grid(
             row=1, sticky="w")
-        ttk.Label(panel, textvariable=self.filename, style="Hint.TLabel", wraplength=238).grid(
-            row=2, sticky="w", pady=(8, 0))
-
         self.pages = [ttk.Frame(panel, style="Card.TFrame") for _ in STEPS]
         for page in self.pages:
             page.columnconfigure(0, weight=1)
         original, start_page, direction_page, output = self.pages
 
-        ttk.Button(original, text="選取 DXF…", command=self.choose_file).grid(row=0, sticky="ew")
         self.field_label(original, "賽道路徑圖層", 1)
         self.layer_combo = ttk.Combobox(original, textvariable=self.layer, state="readonly", width=22)
         self.layer_combo.grid(row=2, sticky="ew")
@@ -186,8 +199,9 @@ class TrackApp:
         self.next_button.grid(row=4, sticky="ew", pady=(12, 5))
         self.back_button = ttk.Button(panel, text="上一步", command=self.go_back)
         self.back_button.grid(row=5, sticky="ew")
-        self.open_button = ttk.Button(panel, text="開啟上次儲存位置", command=self.open_output, state="disabled")
-        self.open_button.grid(row=6, sticky="ew", pady=(5, 0))
+        self.build_circle_panel(sidebar)
+        self.open_button = ttk.Button(sidebar, text="開啟上次儲存位置", command=self.open_output, state="disabled")
+        self.open_button.grid(row=1, sticky="ew", pady=(5, 0))
 
         self.tabs = ttk.Notebook(body)
         self.tabs.pack(side="left", fill="both", expand=True)
@@ -206,20 +220,65 @@ class TrackApp:
         self.toolbar = NavigationToolbar2Tk(self.preview_canvas, preview, pack_toolbar=False)
         self.toolbar.pack(side="bottom", fill="x")
         self.preview_canvas.mpl_connect("button_press_event", self.pick_start)
+        self.circle_tab = ttk.Frame(self.tabs, style="Card.TFrame", padding=8)
+        self.tabs.add(self.circle_tab, text="圓心匯出")
+        circle_figure = Figure(figsize=(7, 5), layout="constrained")
+        self.circle_ax = circle_figure.add_subplot()
+        self.circle_canvas = FigureCanvasTkAgg(circle_figure, master=self.circle_tab)
+        self.circle_canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
+        self.circle_toolbar = NavigationToolbar2Tk(self.circle_canvas, self.circle_tab, pack_toolbar=False)
+        self.circle_toolbar.pack(side="bottom", fill="x")
+        self.tabs.bind("<<NotebookTabChanged>>", self.change_tab)
         self.start.trace_add("write", self.change_start)
         self.direction.trace_add("write", self.change_direction)
         self.tolerance.trace_add("write", lambda *_: self.update_buttons())
         self.scale.trace_add("write", lambda *_: self.invalidate_result())
         self.lateral_g.trace_add("write", lambda *_: self.invalidate_result())
-        ttk.Label(self.root, textvariable=self.status, wraplength=880,
-                  padding=(18, 0, 18, 12)).pack(fill="x")
+        self.status_label = ttk.Label(self.root, textvariable=self.status, wraplength=880, padding=(18, 0, 18, 12))
+        self.status_label.pack(fill="x")
+
+    def build_circle_panel(self, sidebar):
+        panel = self.circle_panel = ttk.Frame(sidebar, style="Card.TFrame")
+        panel.grid(row=0, sticky="ew")
+        panel.grid_remove()
+        panel.columnconfigure(0, weight=1)
+        self.field_label(panel, "圓形圖層", 0)
+        self.circle_layer_combo = ttk.Combobox(panel, textvariable=self.circle_layer, state="disabled", width=22)
+        self.circle_layer_combo.grid(row=1, sticky="ew")
+        self.circle_layer_combo.bind("<<ComboboxSelected>>", lambda _event: self.refresh_circle_centers())
+        self.field_label(panel, "每 DXF 單位的公尺數", 2)
+        self.circle_scale_entry = ttk.Entry(panel, textvariable=self.scale)
+        self.circle_scale_entry.grid(row=3, sticky="ew")
+        ttk.Label(panel, textvariable=self.scale_source, style="Hint.TLabel", wraplength=238).grid(
+            row=4, sticky="w", pady=(3, 0))
+        self.circle_ini_button = ttk.Button(panel, text="INI 設定…", command=self.edit_ini_options)
+        self.circle_ini_button.grid(row=5, sticky="ew", pady=(10, 0))
+        actions = ttk.Frame(panel, style="Card.TFrame")
+        actions.grid(row=6, sticky="ew", pady=(8, 0))
+        actions.columnconfigure((0, 1), weight=1, uniform="export")
+        self.circle_export_buttons = {}
+        for column, export_format in enumerate(("csv", "ini")):
+            button = ttk.Button(actions, text=f"匯出 {export_format.upper()}", style="Primary.TButton",
+                                command=lambda selected=export_format: self.start_circle_export(selected))
+            button.grid(row=0, column=column, sticky="ew", padx=(0, 4) if column == 0 else (4, 0))
+            self.circle_export_buttons[export_format] = button
+
+    def change_tab(self, _event):
+        if self.tabs.select() == str(self.circle_tab):
+            self.route_panel.grid_remove()
+            self.circle_panel.grid()
+            self.status_label.configure(textvariable=self.circle_status)
+        else:
+            self.circle_panel.grid_remove()
+            self.route_panel.grid()
+            self.status_label.configure(textvariable=self.status)
 
     @staticmethod
     def field_label(parent, text, row):
         ttk.Label(parent, text=text, style="Field.TLabel").grid(row=row, sticky="w", pady=(9, 2))
 
     def choose_file(self):
-        selected = filedialog.askopenfilename(title="選取賽道 DXF", filetypes=[("DXF", "*.dxf")])
+        selected = filedialog.askopenfilename(title="選取 DXF", filetypes=[("DXF", "*.dxf")], parent=self.root)
         if selected:
             self.load_file(Path(selected))
 
@@ -229,14 +288,50 @@ class TrackApp:
         except (DXFError, ValueError, OSError) as exc:
             messagebox.showerror("無法讀取 DXF", str(exc), parent=self.root)
             return
+        was_circle_tab = self.tabs.select() == str(self.circle_tab)
         self.path, self.entities = path, entities
+        self.circles = [entity for entity in entities if entity.dxftype() == "CIRCLE"]
         self.filename.set(path.name)
         self.scale.set(f"{scale:.12g}")
         self.scale_source.set(source)
         self.layer_combo.configure(values=(ALL_LAYERS, *layers))
         preferred = next((layer for layer in layers if layer.casefold() == "track"), None)
         self.layer.set(preferred or (layers[0] if len(layers) == 1 else ALL_LAYERS))
+        circle_layers = sorted({circle.dxf.layer for circle in self.circles}, key=str.casefold)
+        self.circle_layer_combo.configure(values=(ALL_LAYERS, *circle_layers))
+        self.circle_layer.set(ALL_LAYERS)
         self.refresh_route()
+        self.refresh_circle_centers()
+        if self.circles and (was_circle_tab or not self.route):
+            self.tabs.select(self.circle_tab)
+
+    def refresh_circle_centers(self):
+        layer = self.circle_layer.get()
+        try:
+            self.centers = circle_centers(self.circles, None if layer == ALL_LAYERS else layer)
+        except ValueError as exc:
+            self.centers = []
+            hint = str(exc)
+        else:
+            if self.centers:
+                hint = f"找到 {len(self.centers):,} 個圓心。可選取圖層並匯出 CSV 或 INI。"
+            elif self.path is not None:
+                hint = "所選圖層沒有圓形（CIRCLE）。"
+            else:
+                hint = "請選取以圓形標記位置的 DXF。"
+        self.circle_status.set(hint)
+        ax = self.circle_ax
+        ax.clear()
+        if self.centers:
+            ax.set(aspect="equal", xlabel="X (DXF units)", ylabel="Y (DXF units)")
+            ax.set_axisbelow(True)
+            ax.grid(True, color="#e1e9ee", linewidth=0.7)
+            ax.scatter(*zip(*self.centers), s=18, color=ACCENT)
+        else:
+            ax.set_axis_off()
+        self.circle_toolbar.update()
+        self.circle_canvas.draw_idle()
+        self.update_buttons()
 
     def refresh_route(self):
         if not self.entities:
@@ -300,7 +395,14 @@ class TrackApp:
             button.configure(state=download_state)
         self.ini_button.configure(state=download_state)
         self.back_button.configure(state="normal" if self.step > 0 and not self.busy else "disabled")
-        if can_download and self.result_folder is not None and not self.busy:
+        self.file_button.configure(state="disabled" if self.busy else "normal")
+        circle_state = "normal" if self.centers and not self.busy else "disabled"
+        for button in self.circle_export_buttons.values():
+            button.configure(state=circle_state)
+        self.circle_ini_button.configure(state=circle_state)
+        self.circle_layer_combo.configure(state="readonly" if self.circles and not self.busy else "disabled")
+        self.circle_scale_entry.configure(state="normal" if self.circles and not self.busy else "disabled")
+        if self.result_folder is not None and not self.busy:
             self.open_button.grid()
             self.open_button.configure(state="normal")
         else:
@@ -333,7 +435,8 @@ class TrackApp:
 
     def invalidate_result(self):
         if self.analysis_canvas is not None:
-            self.tabs.select(0)
+            if self.tabs.select() == str(self.analysis_tab):
+                self.tabs.select(0)
             self.tabs.tab(self.analysis_tab, state="disabled")
             self.analysis_canvas.get_tk_widget().destroy()
             self.analysis_canvas = None
@@ -544,17 +647,21 @@ class TrackApp:
             messagebox.showerror("設定有誤", str(exc), parent=self.root)
             return
         label = self.export_buttons[export_format].cget("text")
-        folder = filedialog.askdirectory(
-            title=f"{label}：選擇儲存資料夾", parent=self.root, mustexist=True,
-            initialdir=str(self.result_folder or self.path.resolve().parent),
-        )
+        folder = self.choose_output_folder(label)
         if not folder:
             return
         self.busy = True
         self.update_buttons()
         self.status.set(f"正在處理「{label}」…")
         self.root.after(20, self.finish_export, self.route, index + 1, self.direction.get() == "reverse",
-                        scale, Path(folder), self.path.stem, export_format, options)
+                        scale, folder, self.path.stem, export_format, options)
+
+    def choose_output_folder(self, label):
+        folder = filedialog.askdirectory(
+            title=f"{label}：選擇儲存資料夾", parent=self.root, mustexist=True,
+            initialdir=str(self.result_folder or self.path.resolve().parent),
+        )
+        return Path(folder) if folder else None
 
     def finish_export(self, route, start, reverse, scale, folder, stem, export_format, options):
         try:
@@ -566,6 +673,37 @@ class TrackApp:
             self.result_folder = folder
             label = self.export_buttons[export_format].cget("text")
             self.status.set(f"{label}完成 · {len(files)} 個檔案已儲存至 {folder} · 全長 {total:,.2f} 公尺")
+        finally:
+            self.busy = False
+            self.update_buttons()
+
+    def start_circle_export(self, export_format):
+        if self.circle_export_buttons[export_format].instate(("disabled",)):
+            return
+        try:
+            scale = self.number(self.scale, "每單位公尺數")
+        except ValueError as exc:
+            messagebox.showerror("設定有誤", str(exc), parent=self.root)
+            return
+        label = self.circle_export_buttons[export_format].cget("text")
+        folder = self.choose_output_folder(label)
+        if folder is None:
+            return
+        self.busy = True
+        self.update_buttons()
+        self.circle_status.set(f"正在處理「{label}」…")
+        self.root.after(20, self.finish_circle_export, self.centers, scale, folder, self.path.stem,
+                        export_format, self.ini_options.copy())
+
+    def finish_circle_export(self, centers, scale, folder, stem, export_format, ini_options):
+        try:
+            target = export_circle_centers(centers, scale, folder, stem, export_format, ini_options=ini_options)
+        except (ValueError, OSError) as exc:
+            self.circle_status.set("圓心匯出失敗。")
+            messagebox.showerror("無法匯出圓心", str(exc), parent=self.root)
+        else:
+            self.result_folder = folder
+            self.circle_status.set(f"已匯出 {len(centers):,} 個圓心至 {target.name}")
         finally:
             self.busy = False
             self.update_buttons()

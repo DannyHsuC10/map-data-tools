@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import math
-import turtle
 import openpyxl
 from openpyxl import Workbook
 #=========================================(DXF檔案讀取)
@@ -262,6 +261,8 @@ def size_scale(segments, scale=100):# 縮放圖面
             seg.radius = seg.radius*scale
 
 def setup_turtle():#設定烏龜圖
+    import turtle
+
     t = turtle.Turtle()
     t.speed(10)        # 1～10，或 "fastest"
     t.pensize(2)
@@ -270,10 +271,14 @@ def setup_turtle():#設定烏龜圖
     return t
 
 def click_exit(x, y):#跳出烏龜(點一下就跳出來但我覺得其實按叉叉就好但是我這段先保留)
+    import turtle
+
     print("Clicked, exiting...")
     turtle.bye()  # 關閉 turtle 視窗
 
 def draw_with_turtle(segments):#畫出烏龜圖
+    import turtle
+
     #turtle.onscreenclick(click_exit)  # 設定點擊事件不然每次都要跑完很浪費時間
     t = setup_turtle()
     try:

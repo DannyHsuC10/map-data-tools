@@ -19,10 +19,11 @@ from track_characterization import plot_analysis
 
 def read_dxf(path):
     drawing = ezdxf.readfile(path)
-    entities = list(drawing.modelspace().query("LINE ARC"))
+    entities = list(drawing.modelspace().query("LINE ARC CIRCLE"))
     if not entities:
-        raise ValueError("這份 DXF 的模型空間沒有直線（LINE）或圓弧（ARC）。")
-    layers = sorted({entity.dxf.layer for entity in entities}, key=str.casefold)
+        raise ValueError("這份 DXF 的模型空間沒有直線（LINE）、圓弧（ARC）或圓形（CIRCLE）。")
+    layers = sorted({entity.dxf.layer for entity in entities if entity.dxftype() != "CIRCLE"},
+                    key=str.casefold)
     try:
         scale = units.conversion_factor(drawing.units, units.M)
         source = "依 DXF 的單位換算"
@@ -32,6 +33,18 @@ def read_dxf(path):
         else:
             scale, source = 1.0, "DXF 無可用單位，請確認比例"
     return entities, layers, scale, source
+
+
+def circle_centers(circles, layer=None):
+    points = []
+    for circle in circles:
+        if layer is not None and circle.dxf.layer != layer:
+            continue
+        center = circle.ocs().to_wcs(circle.dxf.center)
+        if not (math.isfinite(center.x) and math.isfinite(center.y)):
+            raise ValueError("圓心包含無效的 XY 座標，請檢查 DXF。")
+        points.append((center.x, center.y))
+    return points
 
 
 def prepare_route(entities, layer=None, endpoint_tolerance=1e-8):
@@ -138,6 +151,29 @@ def export_track(segments, start, reverse, scale, output_folder, stem, export_fo
             raise ValueError(f"不支援的輸出格式：{export_format}")
         files = publish_files(staged, output_folder)
     return files, figure, total
+
+
+def export_circle_centers(centers, scale, output_folder, stem, export_format, *, ini_options=None):
+    if not centers:
+        raise ValueError("所選圖層沒有圓形可匯出。")
+    if not math.isfinite(scale) or scale <= 0:
+        raise ValueError("每單位公尺數必須是大於零的數字。")
+    points = [(x * scale, y * scale) for x, y in centers]
+    if any(not (math.isfinite(x) and math.isfinite(y)) for x, y in points):
+        raise ValueError("換算後的圓心座標無效，請檢查比例。")
+
+    output_folder = Path(output_folder)
+    with TemporaryDirectory(prefix=".track-", dir=output_folder) as staging:
+        folder = Path(staging)
+        if export_format == "csv":
+            target = folder / f"{stem}_circle_centers.csv"
+            write_csv(target, XY_FIELDS, ((index, x, y) for index, (x, y) in enumerate(points, start=1)))
+        elif export_format == "ini":
+            target = folder / f"{stem}_circle_cones.ini"
+            write_cone_ini(target, points, **(ini_options or {}))
+        else:
+            raise ValueError(f"圓心不支援此輸出格式：{export_format}")
+        return publish_files((target,), output_folder)[0]
 
 
 def write_csv(path, fields, rows):
