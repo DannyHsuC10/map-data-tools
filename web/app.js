@@ -6,8 +6,13 @@ const routeLayer = el("route-layer");
 const circleLayer = el("circle-layer");
 const xyMode = el("xy-mode");
 const xyValue = el("xy-value");
+<<<<<<< HEAD
 const titles = ["Track Order", "Choose Start", "Driving Direction", "Analysis and Export"];
 const nextLabels = ["Choose Start", "Confirm Start", "Confirm Direction", "Run Analysis"];
+=======
+const titles = ["原始排序", "選擇起點", "重新排序與方向", "確認輸出"];
+const nextLabels = ["下一步：選擇起點", "確認起點並重新排序", "確認方向", "完成並檢視分析"];
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
 const viewControls = ["zoom-out", "zoom-in", "zoom-reset"];
 const editing = [...document.querySelectorAll(".panel input, .panel select, .ini-settings")];
 const exportButtons = [...document.querySelectorAll("[data-export]")];
@@ -42,7 +47,11 @@ worker.addEventListener("message", ({ data: { id, result, error } }) => {
   else pending.resolve(result);
 });
 worker.addEventListener("error", () => {
+<<<<<<< HEAD
   for (const pending of requests.values()) pending.reject(new Error("The processing engine stopped responding. Reload the page and try again."));
+=======
+  for (const pending of requests.values()) pending.reject(new Error("瀏覽器運算工具停止回應，請重新整理頁面。"));
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
   requests.clear();
 });
 
@@ -75,7 +84,11 @@ async function perform(task) {
 
 function positive(input, label) {
   const value = input.valueAsNumber;
+<<<<<<< HEAD
   if (!Number.isFinite(value) || value <= 0) throw new Error(`${label} must be a number greater than zero.`);
+=======
+  if (!Number.isFinite(value) || value <= 0) throw new Error(label + "必須是大於零的數字。");
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
   return value;
 }
 
@@ -93,7 +106,11 @@ function selectedLayer(select) {
 }
 
 function populateLayers(select, layers, preferred) {
+<<<<<<< HEAD
   const choices = [new Option("All layers", ""), ...layers.map((layer) => new Option(layer, layer))];
+=======
+  const choices = [new Option("所有圖層", ""), ...layers.map((layer) => new Option(layer, layer))];
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
   select.replaceChildren(...choices);
   if (preferred) select.value = preferred;
 }
@@ -116,11 +133,19 @@ async function prepareRoute() {
   startInput.value = "";
   document.querySelector("[name='direction'][value='forward']").checked = true;
   try {
+<<<<<<< HEAD
     appliedTolerance = positive(el("tolerance"), "Endpoint tolerance");
     route = await request("prepare", { layer: selectedLayer(routeLayer), tolerance: appliedTolerance });
     startInput.max = route.length;
     const lines = route.filter((segment) => segment.type === "LINE").length;
     routeNote = `${route.length} segments in a closed track (${lines} straight, ${route.length - lines} curved).`;
+=======
+    appliedTolerance = positive(el("tolerance"), "端點容差");
+    route = await request("prepare", { layer: selectedLayer(routeLayer), tolerance: appliedTolerance });
+    startInput.max = route.length;
+    const lines = route.filter((segment) => segment.type === "LINE").length;
+    routeNote = "已讀取 " + route.length + " 段閉合路徑 · " + lines + " 段直線 · " + (route.length - lines) + " 段圓弧";
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
   } catch (error) {
     routeNote = error.message;
   }
@@ -134,10 +159,14 @@ async function loadCenters() {
   points = [];
   try {
     points = await request("centers", { layer: selectedLayer(circleLayer) });
+<<<<<<< HEAD
     const count = points.length;
     circleNote = count
       ? `Found ${count.toLocaleString("en")} circle ${count === 1 ? "center" : "centers"}.`
       : "There are no CIRCLE entities in the selected layers.";
+=======
+    circleNote = points.length ? "找到 " + points.length.toLocaleString() + " 個圓心。" : "所選圖層沒有圓形（CIRCLE）。";
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
   } catch (error) {
     circleNote = error.message;
   }
@@ -148,7 +177,11 @@ async function loadCenters() {
 }
 
 async function loadDrawing(filename, bytes, sample) {
+<<<<<<< HEAD
   status("Loading the processing engine and reading the DXF file…");
+=======
+  status("正在載入運算工具並讀取 DXF…");
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
   drawing = await request("load", { filename }, bytes, sample === "route");
   el("file-name").textContent = filename;
   el("file-name").title = filename;
@@ -203,10 +236,17 @@ function render() {
   }
   el("map-area").hidden = showingAnalysis;
   el("analysis-plot").hidden = !showingAnalysis;
+<<<<<<< HEAD
   el("preview-title").textContent = showingAnalysis ? "Track Analysis" : isRoute ? "Track Preview" : "Circle Center Preview";
   el("preview-meta").textContent = showingAnalysis
     ? `Track length ${analysis.total.toLocaleString("en", { maximumFractionDigits: 2 })} m`
     : isRoute ? "DXF coordinates · Positive Y points up" : "DXF coordinates · Each point is a circle center";
+=======
+  el("preview-title").textContent = showingAnalysis ? "賽道分析" : isRoute ? "路徑預覽" : "圓心預覽";
+  el("preview-meta").textContent = showingAnalysis
+    ? "全長 " + analysis.total.toLocaleString("zh-TW", { maximumFractionDigits: 2 }) + " 公尺"
+    : isRoute ? "DXF 座標 · 正 Y 軸朝上" : "DXF 座標 · 每個點代表一個圓心";
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
   el("legend").hidden = !isRoute || showingAnalysis || !route.length;
 }
 
@@ -228,7 +268,11 @@ function drawPlot(keepView = false) {
   const coordinates = mode === "circle" ? points : track.flatMap(({ points: segmentPoints }) => segmentPoints);
   map.replaceChildren();
   el("empty-plot").hidden = coordinates.length > 0;
+<<<<<<< HEAD
   el("empty-plot").textContent = drawing ? "No entities to preview." : "Load a DXF file to see a preview.";
+=======
+  el("empty-plot").textContent = drawing ? "目前沒有可預覽的圖元。" : "載入 DXF 後會在這裡顯示預覽。";
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
   if (!coordinates.length) {
     camera = fit = null;
     return;
@@ -287,7 +331,11 @@ function drawPlot(keepView = false) {
       if (step === 1) {
         node.setAttribute("tabindex", "0");
         node.setAttribute("role", "button");
+<<<<<<< HEAD
         node.setAttribute("aria-label", `Select junction ${number}`);
+=======
+        node.setAttribute("aria-label", "選擇第 " + number + " 段");
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
         node.addEventListener("click", () => pickStart(number));
         node.addEventListener("keydown", (event) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -348,7 +396,11 @@ function download(file) {
   link.download = file.filename;
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 30_000);
+<<<<<<< HEAD
   status(`Download ready for ${file.filename}`);
+=======
+  status("已準備下載 " + file.filename);
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
 }
 
 async function updateOrder() {
@@ -357,19 +409,33 @@ async function updateOrder() {
 }
 
 async function analyze() {
+<<<<<<< HEAD
   const scale = positive(el("scale"), "Meters per DXF unit");
   const lateral_g = positive(el("lateral"), "Lateral acceleration");
   status("Analyzing the track…");
+=======
+  const scale = positive(el("scale"), "每 DXF 單位的公尺數");
+  const lateral_g = positive(el("lateral"), "橫向加速度");
+  status("正在分析賽道…");
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
   analysis = await request("analysis", { start: startIndex(), reverse: direction(), scale, lateral_g });
   analysisUrl = URL.createObjectURL(blobFor(analysis));
   el("analysis-plot").src = analysisUrl;
   view = "analysis";
+<<<<<<< HEAD
   status("Track analysis complete.");
+=======
+  status("賽道分析完成。");
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
 }
 
 async function exportFile(format) {
   if (format === "analysis") { download(analysis); return; }
+<<<<<<< HEAD
   const scale = positive(el(mode === "circle" ? "circle-scale" : "scale"), "Meters per DXF unit");
+=======
+  const scale = positive(el(mode === "circle" ? "circle-scale" : "scale"), "每 DXF 單位的公尺數");
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
   const args = { mode, export_format: format, scale, ini_options: iniOptions };
   if (mode === "circle") {
     args.layer = selectedLayer(circleLayer);
@@ -377,6 +443,7 @@ async function exportFile(format) {
     args.start = startIndex();
     args.reverse = direction();
     if (xyMode.value === "distance") {
+<<<<<<< HEAD
       args.spacing = positive(xyValue, "XY sample spacing");
     } else {
       const count = xyValue.valueAsNumber;
@@ -385,6 +452,16 @@ async function exportFile(format) {
     }
   }
   status("Preparing the export…");
+=======
+      args.spacing = positive(xyValue, "XY 取樣間距");
+    } else {
+      const count = xyValue.valueAsNumber;
+      if (!Number.isInteger(count) || count < 2) throw new Error("每段點數必須是至少 2 的整數。");
+      args.points_per_segment = count;
+    }
+  }
+  status("正在準備匯出…");
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
   download(await request("export", args));
 }
 
@@ -397,9 +474,15 @@ dxf.addEventListener("change", () => {
 });
 for (const [sample, name] of [["route", "fsae_A_2025.dxf"], ["circle", "FST_cone.dxf"]]) {
   el(sample + "-sample").addEventListener("click", () => perform(async () => {
+<<<<<<< HEAD
     status("Downloading the sample…");
     const response = await fetch("./samples/" + name);
     if (!response.ok) throw new Error("Could not load the sample DXF file.");
+=======
+    status("正在下載範例…");
+    const response = await fetch("./samples/" + name);
+    if (!response.ok) throw new Error("無法讀取 DXF 範例。");
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
     await loadDrawing(name, await response.arrayBuffer(), sample);
   }));
 }
@@ -435,7 +518,11 @@ el("show-map").addEventListener("click", () => { view = "map"; render(); });
 el("show-analysis").addEventListener("click", () => { view = "analysis"; render(); });
 xyMode.addEventListener("change", () => {
   const distance = xyMode.value === "distance";
+<<<<<<< HEAD
   el("xy-label").textContent = distance ? "Sample spacing (m)" : "Points per segment (including both ends)";
+=======
+  el("xy-label").textContent = distance ? "取樣間距（公尺）" : "每段點數（含兩端）";
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
   xyValue.min = distance ? "0" : "2";
   xyValue.step = distance ? "any" : "1";
   xyValue.value = xyOptions[xyMode.value];
@@ -469,7 +556,11 @@ iniForm.addEventListener("submit", (event) => {
   if (angles.length !== 3 || angles.some((angle) => !angle) || rotation.some((angle) => !Number.isFinite(angle)) ||
       !model_file || !name || !Number.isSafeInteger(field("firstModel").valueAsNumber)) {
     iniError.dataset.error = "true";
+<<<<<<< HEAD
     iniError.textContent = "Enter three rotation angles, a model filename, an object name, and a valid first object number.";
+=======
+    iniError.textContent = "請輸入三個旋轉角度、模型檔名、物件名稱與有效的起始編號。";
+>>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
     return;
   }
   iniOptions = {
