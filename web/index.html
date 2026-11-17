@@ -1,20 +1,11 @@
 <!doctype html>
-<<<<<<< HEAD
 <html lang="en">
-=======
-<html lang="zh-Hant">
->>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#142b3a">
-<<<<<<< HEAD
   <meta name="description" content="Preview DXF track paths and circle centers, analyze tracks, and export data for simulation.">
   <title>Track Data Tools</title>
-=======
-  <meta name="description" content="在瀏覽器預覽 DXF 賽道與圓心，分析賽道並匯出模擬所需的資料。">
-  <title>賽道資料工具</title>
->>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./app.js"></script>
 </head>
@@ -22,24 +13,15 @@
   <header class="top">
     <div>
       <p class="eyebrow">MAP DATA TOOLS</p>
-<<<<<<< HEAD
       <h1>Track Data Tools</h1>
     </div>
     <div class="input-file">
       <span id="file-name">No file selected</span>
       <label class="button primary file-picker">Choose DXF<input id="dxf" type="file" accept=".dxf" aria-label="Choose DXF"></label>
-=======
-      <h1>賽道資料工具</h1>
-    </div>
-    <div class="input-file">
-      <span id="file-name">尚未選取檔案</span>
-      <label class="button primary file-picker">選取 DXF<input id="dxf" type="file" accept=".dxf" aria-label="選取 DXF"></label>
->>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
     </div>
   </header>
 
   <main>
-<<<<<<< HEAD
     <div class="switcher" role="group" aria-label="Tools">
       <button id="route-tab" class="tab" type="button" aria-pressed="true">Track Analysis</button>
       <button id="circle-tab" class="tab" type="button" aria-pressed="false">Circle Center Export</button>
@@ -95,79 +77,16 @@
                 <button type="button" data-export="csv" class="primary">Export CSV</button>
                 <button type="button" data-export="ini" class="primary">Export INI</button>
                 <button type="button" data-export="analysis">Save Analysis Plot</button>
-=======
-    <div class="switcher" role="group" aria-label="工具">
-      <button id="route-tab" class="tab" type="button" aria-pressed="true">賽道分析</button>
-      <button id="circle-tab" class="tab" type="button" aria-pressed="false">圓心匯出</button>
-    </div>
-
-    <div class="workspace">
-      <aside class="panel" aria-label="設定">
-        <section id="empty-settings">
-          <h2>開始使用</h2>
-          <p>選取自己的 DXF，或載入範例查看路徑和角錐位置。</p>
-          <button id="route-sample" type="button">載入賽道範例</button>
-          <button id="circle-sample" type="button">載入角錐範例</button>
-        </section>
-
-        <section id="route-settings" hidden>
-          <ol class="steps" id="steps" aria-label="進度">
-            <li>排序</li><li>起點</li><li>方向</li><li>輸出</li>
-          </ol>
-          <h2 id="step-title">原始排序</h2>
-          <section data-step="0">
-            <label>賽道路徑圖層 <select id="route-layer"></select></label>
-            <form id="tolerance-form">
-              <label>端點容差（DXF 單位）<input id="tolerance" type="number" step="any" min="0" value="0.00000001" required></label>
-              <button id="apply-tolerance" type="submit">套用容差</button>
-            </form>
-          </section>
-          <section data-step="1" hidden>
-            <p>在圖上點選接點，或輸入接點編號。</p>
-            <label>起點的原始編號<input id="start" type="number" min="1" step="1" required></label>
-          </section>
-          <section data-step="2" hidden>
-            <fieldset>
-              <legend>行駛方向</legend>
-              <label><input name="direction" type="radio" value="forward" checked> 保留原行駛方向</label>
-              <label><input name="direction" type="radio" value="reverse"> 反轉行駛方向</label>
-            </fieldset>
-          </section>
-          <section data-step="3" hidden>
-            <label>每 DXF 單位的公尺數<input id="scale" type="number" min="0" step="any" required></label>
-            <small class="scale-source"></small>
-            <label>分析用橫向加速度（g）<input id="lateral" type="number" min="0" step="any" value="1.6" required></label>
-            <div id="route-exports" hidden>
-              <label>XY 取樣方式
-                <select id="xy-mode">
-                  <option value="distance">每 N 公尺取一點</option>
-                  <option value="segment">每段取 N 點</option>
-                </select>
-              </label>
-              <label><span id="xy-label">取樣間距（公尺）</span><input id="xy-value" type="number" min="0" step="any" value="1" required></label>
-              <button class="ini-settings" type="button">INI 設定</button>
-              <div class="export-buttons">
-                <button type="button" data-export="excel" class="primary">匯出 Excel</button>
-                <button type="button" data-export="csv" class="primary">匯出 CSV</button>
-                <button type="button" data-export="ini" class="primary">匯出 INI</button>
-                <button type="button" data-export="analysis">儲存分析圖</button>
->>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
               </div>
             </div>
           </section>
           <div class="step-buttons">
-<<<<<<< HEAD
             <button id="next" type="button" class="primary">Next</button>
             <button id="back" type="button" hidden>Back</button>
-=======
-            <button id="next" type="button" class="primary">下一步</button>
-            <button id="back" type="button" hidden>上一步</button>
->>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
           </div>
         </section>
 
         <section id="circle-settings" hidden>
-<<<<<<< HEAD
           <h2>Circle Centers</h2>
           <label>Circle layer <select id="circle-layer"></select></label>
           <label>Meters per DXF unit<input id="circle-scale" type="number" min="0" step="any" required></label>
@@ -176,23 +95,12 @@
           <div class="export-buttons">
             <button type="button" data-export="csv" class="primary">Export CSV</button>
             <button type="button" data-export="ini" class="primary">Export INI</button>
-=======
-          <h2>圓心座標</h2>
-          <label>圓形圖層 <select id="circle-layer"></select></label>
-          <label>每 DXF 單位的公尺數<input id="circle-scale" type="number" min="0" step="any" required></label>
-          <small class="scale-source"></small>
-          <button class="ini-settings" type="button">INI 設定</button>
-          <div class="export-buttons">
-            <button type="button" data-export="csv" class="primary">匯出 CSV</button>
-            <button type="button" data-export="ini" class="primary">匯出 INI</button>
->>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
           </div>
         </section>
 
         <p id="status" class="status" role="status"></p>
       </aside>
 
-<<<<<<< HEAD
       <section class="preview" aria-label="Drawing preview">
         <div class="preview-header">
           <div>
@@ -218,38 +126,10 @@
       </section>
     </div>
     <p class="footnote">DXF files are processed in your browser. The processing engine downloads when you open your first file.</p>
-=======
-      <section class="preview" aria-label="圖形預覽">
-        <div class="preview-header">
-          <div>
-            <h2 id="preview-title">路徑預覽</h2>
-            <p id="preview-meta">從 DXF 讀取賽道路徑與圖層。</p>
-          </div>
-          <div class="view-buttons" aria-label="預覽控制">
-            <button type="button" id="show-map" hidden>路徑</button>
-            <button type="button" id="show-analysis" hidden>分析圖</button>
-            <button type="button" id="zoom-out" aria-label="縮小">−</button>
-            <button type="button" id="zoom-in" aria-label="放大">＋</button>
-            <button type="button" id="zoom-reset">重設</button>
-          </div>
-        </div>
-        <div class="map-area" id="map-area">
-          <svg id="map" aria-label="賽道路徑與圓心預覽"></svg>
-          <div class="placeholder" id="empty-plot">載入 DXF 後會在這裡顯示預覽。</div>
-        </div>
-        <img id="analysis-plot" hidden alt="曲率、彎道半徑分布、長度與時間加權、曲率頻譜與波長">
-        <div class="legend" id="legend" hidden>
-          <span><i></i>直線</span><span><i class="arc"></i>圓弧</span><span><i class="start"></i>起點</span>
-        </div>
-      </section>
-    </div>
-    <p class="footnote">DXF 在瀏覽器內處理。首次開啟檔案時會下載運算元件。</p>
->>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
   </main>
 
   <dialog id="ini-dialog">
     <form id="ini-form" method="dialog">
-<<<<<<< HEAD
       <h2>INI Settings</h2>
       <div class="dialog-fields">
         <label>Height (m)<input name="height" type="number" step="any" required></label>
@@ -263,21 +143,6 @@
       <div class="dialog-actions">
         <button id="ini-cancel" type="button">Cancel</button>
         <button type="submit" class="primary">Apply</button>
-=======
-      <h2>INI 設定</h2>
-      <div class="dialog-fields">
-        <label>高度（公尺）<input name="height" type="number" step="any" required></label>
-        <label>起始物件編號<input name="firstModel" type="number" min="0" step="1" required></label>
-        <label>模型檔名<input name="modelFile" required></label>
-        <label>物件名稱<input name="name" required></label>
-        <label>旋轉（以逗號分隔）<input name="rotation" required></label>
-        <label class="check"><input name="physical" type="checkbox"> 啟用物理屬性</label>
-      </div>
-      <p id="ini-error" class="status" role="status"></p>
-      <div class="dialog-actions">
-        <button id="ini-cancel" type="button">取消</button>
-        <button type="submit" class="primary">套用</button>
->>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
       </div>
     </form>
   </dialog>

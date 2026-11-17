@@ -5,10 +5,7 @@ from io import BytesIO
 import json
 import os
 from pathlib import Path
-<<<<<<< HEAD
 import re
-=======
->>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
 from tempfile import TemporaryDirectory
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -22,7 +19,6 @@ from track_pipeline import (
 )
 
 
-<<<<<<< HEAD
 # The shared pipeline also serves the Chinese desktop interface.
 SCALE_SOURCE_LABELS = {
     "依 DXF 的單位換算": "Converted from the DXF units.",
@@ -79,8 +75,6 @@ def english_error_message(message):
     return message
 
 
-=======
->>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
 def download(name, data, media_type):
     return {"filename": name, "type": media_type, "data": base64.b64encode(data).decode("ascii")}
 
@@ -108,11 +102,7 @@ class Drawing:
         self.stem = Path(filename.replace("\\", "_").replace("/", "_")).stem or "track"
         self.route = []
         return {
-<<<<<<< HEAD
             "layers": layers, "scale": scale, "scaleSource": SCALE_SOURCE_LABELS.get(source, source),
-=======
-            "layers": layers, "scale": scale, "scaleSource": source,
->>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
             "circleLayers": sorted({circle.dxf.layer for circle in self.circles}, key=str.casefold),
             "circleCount": len(self.circles),
         }
@@ -170,7 +160,6 @@ operations = {
 
 
 def dispatch(operation, args):
-<<<<<<< HEAD
     try:
         result = operations[operation](**json.loads(args))
     except ValueError as error:
@@ -180,6 +169,3 @@ def dispatch(operation, args):
             raise
         raise ValueError(message) from None
     return json.dumps(result, allow_nan=False)
-=======
-    return json.dumps(operations[operation](**json.loads(args)), allow_nan=False)
->>>>>>> 62778b8eb98f41e0b8dcc8191be6eacc9d45ca39
