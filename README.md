@@ -1,5 +1,9 @@
 # Map data tools
 
+## License
+
+本專案採用 [MIT License](LICENSE)。
+
 ## GitHub Pages 網頁版
 
 在網頁版可匯入 DXF、選擇圖層與起點、預覽賽道和圓心，並匯出 CSV、Excel、INI 或分析圖。賽道 CSV 和 Excel 各以 ZIP 下載，內含幾何和 XY 兩個檔案。DXF 在瀏覽器內處理，首次使用需要網路下載 Python 運算元件。
